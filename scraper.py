@@ -1,5 +1,6 @@
 from pyquery import PyQuery as pq
 from collections import namedtuple
+from multiprocessing import Pool
 import pprint
 import json
 import requests
@@ -12,23 +13,25 @@ QUARTER_MAPPING = {
   'winter': 'W',
   'spring': 'S',
   'summer': 'M',
-  'fall': 'F'
+  'fall': 'F',
 }
 
 # definitely true
-DAYS_MAPPING = {
-  'M': 'Monday',
-  'T': 'Tuesday',
-  'W': 'Wednesday',
-  'Th': 'Thursday',
-  'F': 'Friday',
-  'S': 'Saturday'
-}
+DAYS_MAPPING = [
+  ('M', 'Monday'),
+  ('T', 'Tuesday'),
+  ('W', 'Wednesday'),
+  ('Th', 'Thursday'),
+  ('F', 'Friday'),
+  ('S', 'Saturday'),
+]
 
 # so far
 TYPES_MAPPING = {
   'CLAS': 'Class',
-  'LAB': 'Lab'
+  'LAB': 'Lab',
+  'TBA': 'TBA',
+  'LEC': 'Lecture',
 }
 
 YEAR = str(2015)
@@ -60,19 +63,19 @@ def department_classes_request(department_id):
 
   return requests.post(CLASSES_SEARCH, headers=headers, data=payload)
 
-ClassSection = namedtuple('ClassSection', ['crn', 'course', 'title', 'meetings'])
-ClassMeeting = namedtuple('ClassMeeting', ['time', 'days', 'instructor', 'location', 'type'])
+# ClassSection = namedtuple('ClassSection', ['crn', 'course', 'title', 'meetings'])
+# ClassMeeting = namedtuple('ClassMeeting', ['time', 'days', 'instructor', 'location', 'type'])
 
-Instructor = namedtuple('Instructor', ['first_name', 'last_name'])
+# Instructor = namedtuple('Instructor', ['first_name', 'last_name'])
 
-def describes_class(row):
+def row_describes_class(row):
   return row('.snews').eq(2)('a')
 
 def get_meeting_days(days_text):
-  days = set()
-  for day_key in DAYS_MAPPING:
+  days = []
+  for day_key, day in DAYS_MAPPING:
     if day_key in days_text:
-      days.add(DAYS_MAPPING[day_key])
+      days.append(day)
   return days
 
 def get_meeting_instructor(instructor_text):
@@ -82,17 +85,31 @@ def get_meeting_instructor(instructor_text):
   last_name = instructor_text[:comma_index].capitalize()
   first_name = instructor_text[comma_index+1:].strip().capitalize()
 
-  return Instructor(first_name=first_name, last_name=last_name)
+  return dict(first_name=first_name, last_name=last_name)
 
 def get_meeting_type(type_text):
   return TYPES_MAPPING[type_text]
 
-def get_meeting_time(time_text):
-  pass
+def get_time(time_text):
+  colon_index = time_text.find(':')
+  space_index = time_text.find(' ')
+  hours = int(time_text[:colon_index])
+  minutes = int(time_text[colon_index+1:space_index])
+  period = time_text[space_index+1:]
+  if period == 'PM' and hours < 12: hours += 12
+  if period == 'AM' and hours == 12: hours = 0
+  return dict(hours=hours, minutes=minutes)
+
+def get_meeting_range(range_text):
+  if '-' in range_text:
+    [start, end] = [get_time(time_text) for time_text in range_text.split('-')]
+    return dict(start=start, end=end)
+  else:
+    return 'TBA'
 
 def get_class_info(row):
   snews = row('.snews')
-  crn = int(snews.eq(0).text())
+  crn = snews.eq(0).text()
   course = snews.eq(1).text()
 
   meeting_title = snews.eq(2).text()
@@ -102,47 +119,52 @@ def get_class_info(row):
 
   title = meeting_title[:opening_paren_index].strip()
 
-  meeting_time = snews.eq(3).text()
+  meeting_time = get_meeting_range(snews.eq(3).text())
   meeting_days = get_meeting_days(snews.eq(4).text())
   meeting_instructor = get_meeting_instructor(snews.eq(5).text())
   meeting_location = snews.eq(6).text()
   meeting_type = get_meeting_type(meeting_title[opening_paren_index+1:closing_paren_index])
 
-  meeting = ClassMeeting(time=meeting_time, days=meeting_days, instructor=meeting_instructor, 
+  meeting = dict(time=meeting_time, days=meeting_days, instructor=meeting_instructor, 
     location=meeting_location, type=meeting_type)
 
-  return ClassSection(crn=crn, course=course, title=title, meetings=[meeting])
+  return dict(crn=crn, course=course, title=title, meetings=[meeting])
 
 def get_meeting_info(row):
   snews = row('.snews')
   
-  time = snews.eq(2).text()
+  time = get_meeting_range(snews.eq(2).text())
   days = get_meeting_days(snews.eq(3).text())
   instructor = get_meeting_instructor(snews.eq(4).text())
   location = snews.eq(5).text()
   type = get_meeting_type(snews.eq(1).text()[1:-1])
 
-  return ClassMeeting(time=time, days=days, instructor=instructor, location=location, type=type)
+  return dict(time=time, days=days, instructor=instructor, location=location, type=type)
 
-def get_classes(department_id, department_name):
-  print 'Downloading classes for department %s' % department_name
+departments = get_departments()
+
+def get_classes(department_id):
+  department_name=departments[department_id]
+  #print 'Downloading classes for department %s' % department_name
   classes_page = pq(department_classes_request(department_id).text)
   classes_table = classes_page('.anti_nav_print_adj').eq(2)
   classes_rows = [row for row in classes_table.items('tr') if not row('hr') and row('.snews')]
   classes = []
   for row in classes_rows:
-    if describes_class(row):
+    if row_describes_class(row):
       classes.append(get_class_info(row))
     else:
-      classes[-1].meetings.append(get_meeting_info(row))
-  pprint.pprint(classes)
-  #print [elem.text() for elem in classes_rows]
-  #print [elem('.snews') for elem in classes_page('anti_nav_print_adj').items('tr')]
-
-departments = get_departments()
+      classes[-1]['meetings'].append(get_meeting_info(row))
+  classes_count_computed = len(classes)
+  print 'Found %s classes for department %s' % (classes_count_computed, department_name)
+  return classes
 
 print 'Downloading class information...'
-# for department_id in departments:
-#   get_classes(department_id, departments[department_id])
-department_id = 'MATH'
-get_classes(department_id, departments[department_id])
+classes = [clss for department_id in departments for clss in get_classes(department_id)]
+print 'Found %s total classes' % len(classes)
+
+print 'Dumping class data...'
+with open('classes.json', 'w') as f:
+  json.dump(classes, f, indent=2)
+
+print 'Done'
