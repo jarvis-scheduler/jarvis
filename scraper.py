@@ -171,11 +171,8 @@ def get_classes(department_id):
   print('Found %s classes for department %s' % (classes_count_computed, department_name))
   return classes
 
-# awesomescale process pool
-p = Pool(processes=4)
-
 print('Downloading class information...')
-classes = [clss for department_classes in p.map(get_classes, departments) for clss in department_classes]
+classes = [clss for department_id in departments for clss in get_classes(department_id)]
 print('Found %s total classes' % len(classes))
 
 print('Dumping class data...')
@@ -189,8 +186,11 @@ with open('data/classes.json', 'w') as f:
 instructors = [instructor._asdict() for instructor in instructors_set]
 
 def find_instructor_rating_info(instructor):
-  search_query = ' '.join([instructor['first_name'], instructor['last_name'], 'De', 'Anza', 'College'])
   human_name = '%s %s' % (instructor['first_name'], instructor['last_name'])
+  if instructor['first_name'] == 'M' and instructor['last_name'] == 'Staff':
+    print('Instructor %s skipped' % (human_name))
+    return
+  search_query = ' '.join([instructor['first_name'], instructor['last_name'], 'De', 'Anza', 'College'])
   payload = {
     'query': search_query
   }
@@ -215,7 +215,7 @@ def get_instructor_rating(instructor, rating_id):
 
 print('Downloading instructor rating information...')
 for instructor in instructors:
-  p.apply(find_instructor_rating_info, instructor)
+  find_instructor_rating_info(instructor)
 
 print('Dumping instructor data...')
 with open('data/instructors.json', 'w') as f:
