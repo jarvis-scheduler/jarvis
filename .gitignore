@@ -57,3 +57,6 @@ nosetests.xml
 
 # SublimeText project files
 *.sublime-workspace
+
+# data directory
+data/

@@ -4,9 +4,14 @@ from multiprocessing import Pool
 import pprint
 import json
 import requests
+import os
+import os.path
 
 CLASSES_SCHEDULE = 'https://www.deanza.edu/schedule/classes/index.html'
 CLASSES_SEARCH = 'https://www.deanza.edu/schedule/classes/schsearch.html'
+
+RATING_SEARCH = 'http://www.ratemyprofessors.com/search.jsp'
+RATING_SHOW = 'http://www.ratemyprofessors.com/ShowRatings.jsp'
 
 # guessed, but probably true?
 QUARTER_MAPPING = {
@@ -39,11 +44,11 @@ YEAR = str(2015)
 quarter = YEAR + QUARTER_MAPPING['summer']
 
 def get_departments():
-  print 'Downloading departments list...'
+  print('Downloading departments list...')
   search_page = pq(requests.get(CLASSES_SCHEDULE).text)
   department_options = search_page('#Uniq_Course_ID').items('option')
   departments = {option.val(): option.text() for option in department_options if option.text() != ''}
-  print 'Found %s departments' % len(departments)
+  print('Found %s departments' % len(departments))
   return departments
 
 def department_classes_request(department_id):
@@ -63,10 +68,10 @@ def department_classes_request(department_id):
 
   return requests.post(CLASSES_SEARCH, headers=headers, data=payload)
 
-# ClassSection = namedtuple('ClassSection', ['crn', 'course', 'title', 'meetings'])
-# ClassMeeting = namedtuple('ClassMeeting', ['time', 'days', 'instructor', 'location', 'type'])
+ClassSection = namedtuple('ClassSection', ['crn', 'course', 'title', 'meetings'])
+ClassMeeting = namedtuple('ClassMeeting', ['time', 'days', 'instructor', 'location', 'type'])
 
-# Instructor = namedtuple('Instructor', ['first_name', 'last_name'])
+Instructor = namedtuple('Instructor', ['first_name', 'last_name', 'rating', 'rating_id'])
 
 def row_describes_class(row):
   return row('.snews').eq(2)('a')
@@ -78,12 +83,19 @@ def get_meeting_days(days_text):
       days.append(day)
   return days
 
+instructors_set = set()
+
 def get_meeting_instructor(instructor_text):
 
   comma_index = instructor_text.find(',')
 
   last_name = instructor_text[:comma_index].capitalize()
   first_name = instructor_text[comma_index+1:].strip().capitalize()
+
+  # meh, mutability
+  instructors_set.add(
+    Instructor(first_name=first_name, last_name=last_name, rating='unkown', rating_id='unkown')
+  )
 
   return dict(first_name=first_name, last_name=last_name)
 
@@ -145,7 +157,7 @@ departments = get_departments()
 
 def get_classes(department_id):
   department_name=departments[department_id]
-  #print 'Downloading classes for department %s' % department_name
+  #print('Downloading classes for department %s' % department_name)
   classes_page = pq(department_classes_request(department_id).text)
   classes_table = classes_page('.anti_nav_print_adj').eq(2)
   classes_rows = [row for row in classes_table.items('tr') if not row('hr') and row('.snews')]
@@ -156,15 +168,57 @@ def get_classes(department_id):
     else:
       classes[-1]['meetings'].append(get_meeting_info(row))
   classes_count_computed = len(classes)
-  print 'Found %s classes for department %s' % (classes_count_computed, department_name)
+  print('Found %s classes for department %s' % (classes_count_computed, department_name))
   return classes
 
-print 'Downloading class information...'
-classes = [clss for department_id in departments for clss in get_classes(department_id)]
-print 'Found %s total classes' % len(classes)
+# awesomescale process pool
+p = Pool(processes=4)
 
-print 'Dumping class data...'
-with open('classes.json', 'w') as f:
+print('Downloading class information...')
+classes = [clss for department_classes in p.map(get_classes, departments) for clss in department_classes]
+print('Found %s total classes' % len(classes))
+
+print('Dumping class data...')
+
+if not os.path.exists('data/'):
+  os.mkdir('data/')
+
+with open('data/classes.json', 'w') as f:
   json.dump(classes, f, indent=2)
 
-print 'Done'
+instructors = [instructor._asdict() for instructor in instructors_set]
+
+def find_instructor_rating_info(instructor):
+  search_query = ' '.join([instructor['first_name'], instructor['last_name'], 'De', 'Anza', 'College'])
+  human_name = '%s %s' % (instructor['first_name'], instructor['last_name'])
+  payload = {
+    'query': search_query
+  }
+  search_page = pq(requests.get(RATING_SEARCH, params=payload).text)
+  results = [result.attr('href') for result in search_page('.listings').items('.listing a')]
+  if len(results) == 0:
+    print('No rating found for instructor %s' % human_name)
+  else:
+    print('Rating found for instructor %s' % human_name)
+    result = results[0]
+    rating_id = result[result.find('=')+1:]
+    instructor['rating_id'] = rating_id
+    get_instructor_rating(instructor, rating_id)
+
+def get_instructor_rating(instructor, rating_id): 
+  payload = {
+    'tid': rating_id
+  }
+  rating_page = pq(requests.get(RATING_SHOW, params=payload).text)
+  rating = rating_page('.breakdown-header .grade').eq(0)
+  instructor['rating'] = rating.text()
+
+print('Downloading instructor rating information...')
+for instructor in instructors:
+  p.apply(find_instructor_rating_info, instructor)
+
+print('Dumping instructor data...')
+with open('data/instructors.json', 'w') as f:
+  json.dump(instructors, f, indent=2)
+
+print('Done')
