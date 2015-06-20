@@ -1,14 +1,14 @@
-from collections import namedtuple
 from multiprocessing import Pool
-import pprint
 import os
 import os.path
+import pickle
 
 from pyquery import PyQuery as pq
 import requests
+from jarvis.model import *
 
-CLASSES_SCHEDULE = 'https://www.deanza.edu/schedule/classes/index.html'
-CLASSES_SEARCH = 'https://www.deanza.edu/schedule/classes/schsearch.html'
+COURSES_SCHEDULE = 'https://www.deanza.edu/schedule/classes/index.html'
+COURSES_SEARCH = 'https://www.deanza.edu/schedule/classes/schsearch.html'
 
 RATING_SEARCH = 'http://www.ratemyprofessors.com/search.jsp'
 RATING_SHOW = 'http://www.ratemyprofessors.com/ShowRatings.jsp'
@@ -43,20 +43,9 @@ YEAR = str(2015)
 
 quarter = YEAR + QUARTER_MAPPING['spring']
 
-Department = namedtuple('Department', ['department_id', 'name'])
-
-ClassSection = namedtuple('ClassSection', ['crn', 'course', 'title', 'meetings'])
-Meeting = namedtuple('Meeting', ['time', 'days', 'instructor', 'location', 'type'])
-
-MeetingTime = namedtuple('MeetingTime', ['hours', 'minutes'])
-MeetingRange = namedtuple('MeetingRange', ['start', 'end'])
-
-Instructor = namedtuple('Instructor', ['first_name', 'last_name', 'rating'])
-Rating = namedtuple('Rating', ['score', 'rating_id'])
-
 def get_departments():
     print('Downloading departments list...')
-    search_page = pq(requests.get(CLASSES_SCHEDULE).text)
+    search_page = pq(requests.get(COURSES_SCHEDULE).text)
     department_options = search_page('#Uniq_Course_ID').items('option')
     departments = {
         Department(department_id=option.val(), name=option.text())
@@ -66,7 +55,7 @@ def get_departments():
     return departments
 
 
-def row_describes_class(row):
+def row_describes_course(row):
     return row('.snews').eq(2)('a')
 
 
@@ -110,7 +99,7 @@ def get_meeting_range(range_text):
         return 'TBA'
 
 
-def get_class_info(row):
+def get_course_info(row):
     snews = row('.snews')
     crn = snews.eq(0).text()
     course = snews.eq(1).text()
@@ -131,7 +120,7 @@ def get_class_info(row):
     meeting = Meeting(time=meeting_time, days=meeting_days, instructor=meeting_instructor,
                       location=meeting_location, type=meeting_type)
 
-    return ClassSection(crn=crn, course=course, title=title, meetings=[meeting])
+    return Course(crn=crn, course=course, title=title, meetings=[meeting])
 
 
 def get_meeting_info(row):
@@ -141,39 +130,37 @@ def get_meeting_info(row):
     days = get_meeting_days(snews.eq(3).text())
     instructor = get_meeting_instructor(snews.eq(4).text())
     location = snews.eq(5).text()
-    type = get_meeting_type(snews.eq(1).text()[1:-1])
+    meeting_type = get_meeting_type(snews.eq(1).text()[1:-1])
 
-    return Meeting(time=time, days=days, instructor=instructor, location=location, type=type)
+    return Meeting(time=time, days=days, instructor=instructor, location=location, type=meeting_type)
 
 
-def get_classes(department):
+def get_courses(department):
     headers = {
-        'Referer': CLASSES_SCHEDULE
+        'Referer': COURSES_SCHEDULE
     }
     payload = {
         'Quarter': quarter,
         'Uniq_Course_ID': department.department_id,
     }
-    classes_page = pq(requests.post(CLASSES_SEARCH, headers=headers, data=payload).text)
-    classes_table = classes_page('.anti_nav_print_adj').eq(2)
-    classes_rows = [row for row in classes_table.items('tr') if not row('hr') and row('.snews')]
-    classes_computed = []
-    for row in classes_rows:
-        if row_describes_class(row):
-            classes_computed.append(get_class_info(row))
+    courses_page = pq(requests.post(COURSES_SEARCH, headers=headers, data=payload).text)
+    courses_table = courses_page('.anti_nav_print_adj').eq(2)
+    courses_rows = [row for row in courses_table.items('tr') if not row('hr') and row('.snews')]
+    courses_computed = []
+    for row in courses_rows:
+        if row_describes_course(row):
+            courses_computed.append(get_course_info(row))
         else:
-            classes_computed[-1].meetings.append(get_meeting_info(row))
-    classes_count_computed = len(classes_computed)
-    print('Found %s classes for department %s' % (classes_count_computed, department.name))
-    return classes_computed
-
-
-def is_m_staff(instructor):
-    return instructor.first_name == 'M' and instructor.last_name == 'Staff'
-
+            courses_computed[-1].meetings.append(get_meeting_info(row))
+    courses_count_computed = len(courses_computed)
+    print('Found %s courses for department %s' % (courses_count_computed, department.name))
+    return courses_computed
 
 def find_instructor_rating(instructor):
     human_name = '%s %s' % (instructor.first_name, instructor.last_name)
+    if instructor.first_name == 'M' and instructor.last_name == 'Staff':
+        print('Skipping instructor %s' % human_name)
+        return instructor
     search_query = '%s %s De Anza College ' % (instructor.first_name, instructor.last_name)
     payload = {
         'query': search_query
@@ -201,27 +188,43 @@ def get_instructor_rating(instructor, rating_id):
     else:
         return instructor._replace(rating=Rating(score="unknown", rating_id=rating_id))
 
+def instructor_id(instructor):
+    return "%s %s" % (instructor.first_name, instructor.last_name)
+
 def scrape():
     departments = get_departments()
-    print('Downloading class information...')
+    print('Downloading course information...')
     p = Pool(8)
-    classes = [clss for department_classes in p.map(get_classes, departments) for clss in department_classes]
-    instructors = set(meeting.instructor for clss in classes for meeting in clss.meetings if not is_m_staff(meeting.instructor))
-    print('Found %s total classes' % len(classes))
-
-    print('Dumping class data...')
-
-    if not os.path.exists('data/'):
-        os.mkdir('data/')
-
-    with open('data/classes.txt', 'w') as f:
-        pprint.pprint(classes, f, indent=2)
+    courses = [course for department_courses in p.map(get_courses, departments) for course in department_courses]
+    instructors = set(
+        meeting.instructor for course in courses for meeting in course.meetings
+    )
+    
+    print('Found %s total courses' % len(courses))
 
     print('Downloading instructor rating information...')
     instructors = p.map(find_instructor_rating, instructors)
 
-    print('Dumping instructor data...')
-    with open('data/instructors.txt', 'w') as f:
-        pprint.pprint(instructors, f, indent=2)
+    print('Updating instructor data within courses..')
+    instructors_map = {instructor_id(instructor): instructor for instructor in instructors}
+
+    courses = [
+        course._replace(meetings=[
+            meeting._replace(instructor=instructors_map[instructor_id(meeting.instructor)])
+            for meeting in course.meetings
+        ]) for course in courses
+    ]
+
+    print('Pickling course data...')
+
+    if not os.path.exists('data/'):
+        os.mkdir('data/')
+
+    with open('data/courses.pickle', 'w') as courses_file:
+        pickle.dump(courses, courses_file)
+
+    print('Pickling instructor data...')
+    with open('data/instructors.pickle', 'w') as instructors_file:
+        pickle.dump(instructors, instructors_file)
 
     print('Done')
