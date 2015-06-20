@@ -1,0 +1,227 @@
+from collections import namedtuple
+from multiprocessing import Pool
+import pprint
+import os
+import os.path
+
+from pyquery import PyQuery as pq
+import requests
+
+CLASSES_SCHEDULE = 'https://www.deanza.edu/schedule/classes/index.html'
+CLASSES_SEARCH = 'https://www.deanza.edu/schedule/classes/schsearch.html'
+
+RATING_SEARCH = 'http://www.ratemyprofessors.com/search.jsp'
+RATING_SHOW = 'http://www.ratemyprofessors.com/ShowRatings.jsp'
+
+# guessed, but probably true?
+QUARTER_MAPPING = {
+    'winter': 'W',
+    'spring': 'S',
+    'summer': 'M',
+    'fall': 'F',
+}
+
+# definitely true
+DAYS_MAPPING = [
+    ('M', 'Monday'),
+    ('T', 'Tuesday'),
+    ('W', 'Wednesday'),
+    ('Th', 'Thursday'),
+    ('F', 'Friday'),
+    ('S', 'Saturday'),
+]
+
+# so far
+TYPES_MAPPING = {
+    'CLAS': 'Class',
+    'LAB': 'Lab',
+    'TBA': 'TBA',
+    'LEC': 'Lecture',
+}
+
+YEAR = str(2015)
+
+quarter = YEAR + QUARTER_MAPPING['spring']
+
+Department = namedtuple('Department', ['department_id', 'name'])
+
+ClassSection = namedtuple('ClassSection', ['crn', 'course', 'title', 'meetings'])
+Meeting = namedtuple('Meeting', ['time', 'days', 'instructor', 'location', 'type'])
+
+MeetingTime = namedtuple('MeetingTime', ['hours', 'minutes'])
+MeetingRange = namedtuple('MeetingRange', ['start', 'end'])
+
+Instructor = namedtuple('Instructor', ['first_name', 'last_name', 'rating'])
+Rating = namedtuple('Rating', ['score', 'rating_id'])
+
+def get_departments():
+    print('Downloading departments list...')
+    search_page = pq(requests.get(CLASSES_SCHEDULE).text)
+    department_options = search_page('#Uniq_Course_ID').items('option')
+    departments = {
+        Department(department_id=option.val(), name=option.text())
+        for option in department_options if option.text() != ''
+    }
+    print('Found %s departments' % len(departments))
+    return departments
+
+
+def row_describes_class(row):
+    return row('.snews').eq(2)('a')
+
+
+def get_meeting_days(days_text):
+    days = set()
+    for day_key, day in DAYS_MAPPING:
+        if day_key in days_text:
+            days.add(day)
+    return days
+
+
+def get_meeting_instructor(instructor_text):
+    comma_index = instructor_text.find(',')
+
+    last_name = instructor_text[:comma_index].capitalize()
+    first_name = instructor_text[comma_index + 1:].strip().capitalize()
+
+    return Instructor(first_name=first_name, last_name=last_name, rating='unknown')
+
+
+def get_meeting_type(type_text):
+    return TYPES_MAPPING[type_text]
+
+
+def get_time(time_text):
+    colon_index = time_text.find(':')
+    space_index = time_text.find(' ')
+    hours = int(time_text[:colon_index])
+    minutes = int(time_text[colon_index + 1:space_index])
+    period = time_text[space_index + 1:]
+    if period == 'PM' and hours < 12: hours += 12
+    if period == 'AM' and hours == 12: hours = 0
+    return MeetingTime(hours=hours, minutes=minutes)
+
+
+def get_meeting_range(range_text):
+    if '-' in range_text:
+        [start, end] = [get_time(time_text) for time_text in range_text.split('-')]
+        return MeetingRange(start=start, end=end)
+    else:
+        return 'TBA'
+
+
+def get_class_info(row):
+    snews = row('.snews')
+    crn = snews.eq(0).text()
+    course = snews.eq(1).text()
+
+    meeting_title = snews.eq(2).text()
+
+    opening_paren_index = meeting_title.rfind('(')
+    closing_paren_index = meeting_title.rfind(')')
+
+    title = meeting_title[:opening_paren_index].strip()
+
+    meeting_time = get_meeting_range(snews.eq(3).text())
+    meeting_days = get_meeting_days(snews.eq(4).text())
+    meeting_instructor = get_meeting_instructor(snews.eq(5).text())
+    meeting_location = snews.eq(6).text()
+    meeting_type = get_meeting_type(meeting_title[opening_paren_index + 1:closing_paren_index])
+
+    meeting = Meeting(time=meeting_time, days=meeting_days, instructor=meeting_instructor,
+                      location=meeting_location, type=meeting_type)
+
+    return ClassSection(crn=crn, course=course, title=title, meetings=[meeting])
+
+
+def get_meeting_info(row):
+    snews = row('.snews')
+
+    time = get_meeting_range(snews.eq(2).text())
+    days = get_meeting_days(snews.eq(3).text())
+    instructor = get_meeting_instructor(snews.eq(4).text())
+    location = snews.eq(5).text()
+    type = get_meeting_type(snews.eq(1).text()[1:-1])
+
+    return Meeting(time=time, days=days, instructor=instructor, location=location, type=type)
+
+
+def get_classes(department):
+    headers = {
+        'Referer': CLASSES_SCHEDULE
+    }
+    payload = {
+        'Quarter': quarter,
+        'Uniq_Course_ID': department.department_id,
+    }
+    classes_page = pq(requests.post(CLASSES_SEARCH, headers=headers, data=payload).text)
+    classes_table = classes_page('.anti_nav_print_adj').eq(2)
+    classes_rows = [row for row in classes_table.items('tr') if not row('hr') and row('.snews')]
+    classes_computed = []
+    for row in classes_rows:
+        if row_describes_class(row):
+            classes_computed.append(get_class_info(row))
+        else:
+            classes_computed[-1].meetings.append(get_meeting_info(row))
+    classes_count_computed = len(classes_computed)
+    print('Found %s classes for department %s' % (classes_count_computed, department.name))
+    return classes_computed
+
+
+def is_m_staff(instructor):
+    return instructor.first_name == 'M' and instructor.last_name == 'Staff'
+
+
+def find_instructor_rating(instructor):
+    human_name = '%s %s' % (instructor.first_name, instructor.last_name)
+    search_query = '%s %s De Anza College ' % (instructor.first_name, instructor.last_name)
+    payload = {
+        'query': search_query
+    }
+    search_page = pq(requests.get(RATING_SEARCH, params=payload).text)
+    results = [result.attr('href') for result in search_page('.listings').items('.listing a')]
+    if len(results) == 0:
+        print('No rating found for instructor %s' % human_name)
+        return instructor
+    else:
+        print('Rating found for instructor %s' % human_name)
+        result = results[0]
+        rating_id = result[result.find('=') + 1:]
+        return get_instructor_rating(instructor, rating_id)
+
+
+def get_instructor_rating(instructor, rating_id):
+    payload = {
+        'tid': rating_id
+    }
+    rating_page = pq(requests.get(RATING_SHOW, params=payload).text)
+    rating = rating_page('.breakdown-header .grade').eq(0)
+    if rating:
+        return instructor._replace(rating=Rating(score=float(rating.text()), rating_id=rating_id))
+    else:
+        return instructor._replace(rating=Rating(score="unknown", rating_id=rating_id))
+
+def scrape():
+    departments = get_departments()
+    print('Downloading class information...')
+    p = Pool(8)
+    classes = [clss for department_classes in p.map(get_classes, departments) for clss in department_classes]
+    instructors = set(meeting.instructor for clss in classes for meeting in clss.meetings if not is_m_staff(meeting.instructor))
+    print('Found %s total classes' % len(classes))
+
+    print('Dumping class data...')
+
+    if not os.path.exists('data/'):
+        os.mkdir('data/')
+
+    with open('data/classes.txt', 'w') as f:
+        pprint.pprint(classes, f, indent=2)
+
+    print('Downloading instructor rating information...')
+    instructors = p.map(find_instructor_rating, instructors)
+
+    print('Dumping instructor data...')
+    with open('data/instructors.txt', 'w') as f:
+        pprint.pprint(instructors, f, indent=2)
+
+    print('Done')
