@@ -215,11 +215,14 @@ def scrape():
         ]) for course in courses
     ]
 
-    print('Pickling course data...')
-
     if not os.path.exists('data/'):
         os.mkdir('data/')
 
+    print('Pickling department data...')
+    with open('data/departments.pickle', 'w') as departments_file:
+        pickle.dump(departments, departments_file)
+
+    print('Pickling course data...')
     with open('data/courses.pickle', 'w') as courses_file:
         pickle.dump(courses, courses_file)
 
