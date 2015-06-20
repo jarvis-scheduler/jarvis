@@ -60,3 +60,6 @@ nosetests.xml
 
 # data directory
 data/
+
+# env
+env/

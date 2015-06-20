@@ -84,5 +84,4 @@ def scheduler(requirements):
 
     possible.sort(key=lambda x: x.rating, reverse=True)
 
-
-    return(possible[:20])
+    return possible[:20]
