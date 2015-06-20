@@ -219,15 +219,15 @@ def scrape():
         os.mkdir('data/')
 
     print('Pickling department data...')
-    with open('data/departments.pickle', 'w') as departments_file:
+    with open('data/departments.pickle', 'wb') as departments_file:
         pickle.dump(departments, departments_file)
 
     print('Pickling course data...')
-    with open('data/courses.pickle', 'w') as courses_file:
+    with open('data/courses.pickle', 'wb') as courses_file:
         pickle.dump(courses, courses_file)
 
     print('Pickling instructor data...')
-    with open('data/instructors.pickle', 'w') as instructors_file:
+    with open('data/instructors.pickle', 'wb') as instructors_file:
         pickle.dump(instructors, instructors_file)
 
     print('Done')
