@@ -2,6 +2,7 @@ from collections import namedtuple
 
 Department = namedtuple('Department', ['department_id', 'name'])
 
+Result = namedtuple('Result', ['rating', 'schedule'])
 Course = namedtuple('Course', ['crn', 'course', 'title', 'meetings'])
 Meeting = namedtuple('Meeting', ['time', 'days', 'instructor', 'location', 'type'])
 
