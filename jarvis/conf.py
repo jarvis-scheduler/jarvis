@@ -11,5 +11,5 @@ STATIC_FILES_DIR = os.path.join(BASE_DIR, 'static/')
 PORT = os.environ.get('JARVIS_PORT', 8080)
 
 JSX_PATHS = [
-    ('jsx/jarvis.jsx', 'js/jarvis.js'),
+    ('jsx/jarvis.jsx', 'build/js/jarvis.js'),
 ]

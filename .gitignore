@@ -63,3 +63,6 @@ data/
 
 # env
 env/
+
+# build static
+jarvis/static/build/
