@@ -43,6 +43,7 @@ YEAR = str(2015)
 
 quarter = YEAR + QUARTER_MAPPING['spring']
 
+
 def get_departments():
     print('Downloading departments list...')
     search_page = pq(requests.get(COURSES_SCHEDULE).text)
@@ -156,6 +157,7 @@ def get_courses(department):
     print('Found %s courses for department %s' % (courses_count_computed, department.name))
     return courses_computed
 
+
 def find_instructor_rating(instructor):
     human_name = '%s %s' % (instructor.first_name, instructor.last_name)
     if instructor.first_name == 'M' and instructor.last_name == 'Staff':
@@ -165,6 +167,7 @@ def find_instructor_rating(instructor):
     payload = {
         'query': search_query
     }
+
     search_page = pq(requests.get(RATING_SEARCH, params=payload).text)
     results = [result.attr('href') for result in search_page('.listings').items('.listing a')]
     if len(results) == 0:
@@ -188,8 +191,10 @@ def get_instructor_rating(instructor, rating_id):
     else:
         return instructor._replace(rating=Rating(score="unknown", rating_id=rating_id))
 
+
 def instructor_id(instructor):
     return "%s %s" % (instructor.first_name, instructor.last_name)
+
 
 def scrape():
     departments = get_departments()
@@ -199,7 +204,7 @@ def scrape():
     instructors = set(
         meeting.instructor for course in courses for meeting in course.meetings
     )
-    
+
     print('Found %s total courses' % len(courses))
 
     print('Downloading instructor rating information...')
