@@ -20,6 +20,8 @@ def preprocess_index():
 
 
 def search(search):
+    search = search.lower()
+
     with open('data/index.pickle', 'rb') as index_file:
         index = pickle.load(index_file)
 
