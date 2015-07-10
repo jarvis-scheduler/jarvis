@@ -1,19 +1,25 @@
 import asyncio
+from json import JSONEncoder
 from aiohttp import web, Response
 import aiohttp_jinja2 as aiohttp_jinja2
 import jinja2
 from jarvis import conf
 from jarvis.builder import build
-from jarvis.util import JsonResponse
+from jarvis.search import search
+from jarvis.util import JsonResponse, sanify
 
+encoder = JSONEncoder()
 
 @aiohttp_jinja2.template('index.jinja2')
 def home(request):
     return {}
 
 @asyncio.coroutine
-def search(request):
-    return JsonResponse(body=dict(a='b',c=None,d=3, arr=[1,2, 3, 4, 5, 6, 7,]))
+def api_search(request):
+    json = yield from request.json()
+    query = json['query']
+    results = sanify(search(query))
+    return JsonResponse(body=encoder.encode(results))
 
 app = web.Application()
 
@@ -22,7 +28,7 @@ aiohttp_jinja2.setup(app,
 staticRoute = app.router.add_static(conf.STATIC_URL, conf.STATIC_FILES_DIR)
 
 app.router.add_route('GET', '/', home)
-app.router.add_route('GET', '/search', search)
+app.router.add_route('POST', '/search', api_search)
 
 loop = asyncio.get_event_loop()
 handler = app.make_handler()
