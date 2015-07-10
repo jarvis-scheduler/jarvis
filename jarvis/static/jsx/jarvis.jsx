@@ -62,7 +62,7 @@ class SearchCourses extends React.Component {
           </div>
         </div>
         <div className="row">
-          <div className="col-sm-4">
+          <div className="col-sm-3">
             <div className="input-group">
               <input className="form-control" type="text" placeholder="Search..." ref="search"/>
               <span className="input-group-btn">
@@ -70,7 +70,7 @@ class SearchCourses extends React.Component {
               </span>
             </div>
           </div>
-          <div className="col-sm-8">
+          <div className="col-sm-9">
             <SearchResults searchQuery={this.state.searchQuery}/>
           </div>
         </div>
@@ -80,6 +80,25 @@ class SearchCourses extends React.Component {
 }
 
 class SearchResults extends React.Component {
+
+  constructor(props) {
+    super(props);
+    this.state = {loading: true};
+  }
+
+  componentWillReceiveProps(newProps) {
+    this.setState({loading: true});
+    $.ajax({
+      type: 'POST',
+      url: '/search',
+      data: JSON.stringify({query: newProps.searchQuery}),
+      contentType: 'application/json',
+      dataType: 'json',
+      success: function (data) {
+        this.setState({loading: false, results: data});
+      }.bind(this)
+    });
+  }
 
   render() {
     var output;
@@ -92,7 +111,15 @@ class SearchResults extends React.Component {
         </ul>
       );
     } else {
-      output = <div>{this.props.searchQuery}</div>
+      if (this.state.loading) {
+        output = <div>loading...</div>
+      } else {
+        output = <ul className="list-item-group">{
+          this.state.results.map(function (result) {
+            return <CourseSearchResult course={result}/>;
+          })
+        }</ul>
+      }
     }
     return output;
   }
@@ -102,6 +129,76 @@ class SearchResults extends React.Component {
 SearchResults.propTypes = { searchQuery: React.PropTypes.String };
 SearchResults.defaultProps = { searchQuery: ''};
 
+class CourseSearchResult extends React.Component {
+
+  formatTime(time) {
+    return moment({H: time.hours, m: time.minutes}).format('h:mm a');
+  }
+
+  meetingTime(time) {
+    if (time === "TBA") {
+      return time;
+    } else {
+      return `${this.formatTime(time.start)} - ${this.formatTime(time.end)}`;
+    }
+  }
+
+  meetingRating(instructor) {
+    if (instructor.rating === "unknown") {
+      return instructor.rating;
+    } else {
+      return instructor.rating.score;
+    }
+  }
+
+  render() {
+    return (
+      <li className="list-group-item">
+        <h4 className="list-group-item-heading">#{this.props.course.crn} <span className="text-muted">({this.props.course.course})</span></h4>
+        <p className="list-group-item-text">
+          {this.props.course.title}
+        </p>
+        <table className="table">
+          <thead>
+            <th>Days</th>
+            <th>Location</th>
+            <th>Time</th>
+            <th>Instructor</th>
+            <th>Rating</th>
+            <th>Type</th>
+          </thead>
+          {this.props.course.meetings.map((meeting) => {
+            return (
+              <tr>
+                <td>{meeting.days.map((day) => {
+                  return <span>{day}<br/></span>;
+                })}</td>
+                <td>{meeting.location}</td>
+                <td>{this.meetingTime(meeting.time)}</td>
+                <td>{meeting.instructor.first_name} {meeting.instructor.last_name}</td>
+                <td>{this.meetingRating(meeting.instructor)}</td>
+                <td>{meeting.type}</td>
+              </tr>
+            );
+          })}
+        </table>
+        <div className="row" ref="scheduler">
+        </div>
+      </li>
+    )
+  }
+
+}
+
+CourseSearchResult.propTypes = { course: React.PropTypes.Object };
+CourseSearchResult.defaultProps = { course: {} };
+
+class CourseScheduleVisualization extends React.Component {
+
+
+
+}
+
 var routes = (
   <Route handler={App}>
     <Route path="/" handler={Home}/>
@@ -110,5 +207,5 @@ var routes = (
 );
 
 Router.run(routes, Router.HashLocation, (Root) => {
-  React.render(<Root/>, document.body);
+  React.render(<Root/>, $("#app").get(0));
 });

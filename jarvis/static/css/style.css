@@ -1,3 +1,7 @@
 .navbar-static-top {
     margin-bottom: 0;
 }
+
+.list-item-group {
+    padding-left: 0;
+}
