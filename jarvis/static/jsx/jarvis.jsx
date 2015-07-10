@@ -112,7 +112,7 @@ class SearchResults extends React.Component {
       );
     } else {
       if (this.state.loading) {
-        output = <div>loading...</div>
+        output = <Spinner/>;
       } else {
         output = <ul className="list-item-group">{
           this.state.results.map(function (result) {
@@ -192,6 +192,22 @@ class CourseSearchResult extends React.Component {
 
 CourseSearchResult.propTypes = { course: React.PropTypes.Object };
 CourseSearchResult.defaultProps = { course: {} };
+
+class Spinner extends React.Component {
+
+  render() {
+    return (
+      <div className="spinner">
+        <div className="rect1"></div>
+        <div className="rect2"></div>
+        <div className="rect3"></div>
+        <div className="rect4"></div>
+        <div className="rect5"></div>
+      </div>
+    )
+  }
+
+}
 
 class CourseScheduleVisualization extends React.Component {
 
