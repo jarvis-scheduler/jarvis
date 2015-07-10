@@ -19,6 +19,20 @@ class App extends React.Component {
           </div>
         </nav>
         <RouteHandler/>
+        <div className="footer">
+          <div className="container">
+            <div className="row">
+              <div className="col-sm-6">
+                Made with <i className="glyphicon glyphicon-heart"></i> by Lee Mracek and Max Ovsiankin
+              </div>
+              <div className="col-sm-6">
+                <div className="text-right">
+                  Source on <a href="https://github.com/gratimax/jarvis">GitHub</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -114,7 +128,11 @@ class SearchResults extends React.Component {
       if (this.state.loading) {
         output = <Spinner/>;
       } else {
-        output = <ul className="list-item-group">{
+
+        var numResults = this.state.results.length;
+        output = <ul className="list-item-group">
+          <li className="list-group-item text-right">{numResults} {numResults == 1 ? "result" : "results"}</li>
+          {
           this.state.results.map(function (result) {
             return <CourseSearchResult course={result}/>;
           })
