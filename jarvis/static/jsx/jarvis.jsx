@@ -78,10 +78,12 @@ class SearchCourses extends React.Component {
         <div className="row">
           <div className="col-sm-3">
             <div className="input-group">
-              <input className="form-control" type="text" placeholder="Search..." ref="search"/>
-              <span className="input-group-btn">
-                <button type="button" className="btn btn-primary" onClick={this.handleSearch.bind(this)}><i className="glyphicon glyphicon-search"></i></button>
-              </span>
+              <form role="form">
+                <input className="form-control" type="text" placeholder="Search..." ref="search"/>
+                <span className="input-group-btn">
+                    <button type="submit" className="btn btn-primary" onClick={this.handleSearch.bind(this)}><i className="glyphicon glyphicon-search"></i></button>
+                </span>
+              </form>
             </div>
           </div>
           <div className="col-sm-9">
