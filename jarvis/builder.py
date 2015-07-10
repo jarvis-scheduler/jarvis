@@ -2,6 +2,9 @@ import os
 from react import jsx
 from jarvis import conf
 
+if not os.path.exists(conf.BUILD_PATH):
+    os.makedirs(conf.BUILD_PATH)
+
 def build():
     transformer = jsx.JSXTransformer()
     for jsx_path, js_path in conf.JSX_PATHS:
