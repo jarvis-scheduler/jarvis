@@ -26,11 +26,23 @@ def search(search):
         index = pickle.load(index_file)
 
     split = search.split()
-    matches = []
+    matches_list = []
     for x in range(len(split)):
         matches_raw = [v for (k, v) in index.items() if split[x] in k.lower()]
         if not x == 0:
-            matches = [i for i in matches if i in matches_raw]
+            matches_list = [i for i in matches_list if i in matches_raw]
         else:
-            matches = matches_raw
+            matches_list = matches_raw
+    matches = {}
+    for match in matches_list:
+        if match.course[0] in {'#', '^', '*'}:
+            if not match.course[:11] in matches.keys():
+                matches[match.course[:11]] = [match]
+            else:
+                matches[match.course[:11]].append(match)
+        else:
+            if not match.course[:9] in matches.keys():
+                matches[match.course[:9]] = [match]
+            else:
+                matches[match.course[:9]].append(match)
     return matches
