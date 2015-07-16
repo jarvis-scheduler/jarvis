@@ -237,9 +237,8 @@ class CourseSearchResultOption extends React.Component {
   }
 
   ratingHue(rating) {
-    var a = 0.013;
-    var b = -0.1;
-    return a * rating * rating + b * rating;
+    var a = 0.012;
+    return a * rating * rating;
   }
 
   ratingStyle() {
