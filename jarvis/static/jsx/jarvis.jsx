@@ -11,7 +11,7 @@ class App extends React.Component {
           <div className="container">
             <div className="row">
               <div className="col-sm-12">
-                <div classname="navbar-header">
+                <div className="navbar-header">
                   <a className="navbar-brand" href="#">Jarvis</a>
                 </div>
               </div>
@@ -65,7 +65,8 @@ class SearchCourses extends React.Component {
     this.state = {searchQuery: ''};
   }
 
-  handleSearch() {
+  handleSearch(evt) {
+    evt.preventDefault();
     this.setState({searchQuery: $c(this.refs.search).val()});
   }
 
@@ -80,11 +81,11 @@ class SearchCourses extends React.Component {
         </div>
         <div className="row">
           <div className="col-sm-3">
-            <form role="form">
+            <form role="form" onSubmit={this.handleSearch.bind(this)} ref="search-form">
               <div className="input-group">
                 <input className="form-control" type="text" placeholder="Search..." ref="search"/>
                 <span className="input-group-btn">
-                    <button type="submit" className="btn btn-primary" onClick={this.handleSearch.bind(this)}><i className="glyphicon glyphicon-search"></i></button>
+                    <button type="submit" className="btn btn-primary"><i className="glyphicon glyphicon-search"></i></button>
                 </span>
               </div>
             </form>
@@ -144,12 +145,13 @@ class SearchResults extends React.Component {
       if (this.state.loading) {
         output = <Spinner/>;
       } else {
-        var numResults = this.state.results
-          .map((result) => result.options.length)
-          .reduce((a, b) => a + b);
+        //var numResults = this.state.results
+        //  .map((result) => result.options.length)
+        //  .reduce((a, b) => a + b);
+        var numResults = this.state.results.length;
         output = <ul className="list-item-group">
           <li className="list-group-item text-right">{numResults} {numResults == 1 ? "result" : "results"}</li>
-          {this.state.results.map((result) =>
+          {this.state.results.map(result =>
             <CourseSearchResult result={result}/>
           )}
         </ul>;
@@ -162,25 +164,33 @@ class SearchResults extends React.Component {
 
 class CourseSearchResult extends React.Component {
 
+  constructor(props) {
+    super(props);
+    this.state = {open: false};
+  }
+
+  toggleOpen() {
+    this.setState({open: !this.state.open});
+  }
+
   render() {
+    var options;
+    if (this.state.open) {
+      options = (
+          <ul className="list-item-group">
+            {this.props.result.options.map(option =>
+                <CourseSearchResultOption option={option}/>
+            )}
+          </ul>
+      );
+    } else {
+      options = null;
+    }
     return (
-      <li className="list-group-item">
-        <div className="row">
-          <div className="col-md-2">
-            <h4 className="list-group-item-heading">{this.props.result.course.title}</h4>
-            <p>{this.props.result.course.description}</p>
-          </div>
-          <div className="col-md-10">
-          <h4 className="list-group-item-heading">Options</h4>
-            <p classname="list-group-item-text">
-              <ul className="list-item-group">
-                {this.props.result.options.map((option) =>
-                    <CourseSearchResultOption option={option}/>
-                )}
-              </ul>
-            </p>
-          </div>
-        </div>
+      <li className="list-group-item search-result" onClick={this.toggleOpen.bind(this)}>
+        <h4 className="list-group-item-heading">{this.props.result.course.title}</h4>
+        <p>{this.props.result.course.description}</p>
+        {options}
       </li>
     );
   }
@@ -209,39 +219,54 @@ class CourseSearchResultOption extends React.Component {
     }
   }
 
+  meetingInstructor(meeting) {
+    return `${meeting.instructor.first_name} ${meeting.instructor.last_name}`;
+  }
+
+  uniq(arr) {
+    return arr.filter((x, i) => arr.indexOf(x) === i);
+  }
+
+  totalRating() {
+    var ratings = this.props.option.meetings.map(meeting => this.meetingRating(meeting.instructor)).filter(rating => rating !== "unknown");
+    if (ratings.length === 0) {
+      return "unknown";
+    } else {
+      return (20 * ratings.reduce((a, b) => a + b) / ratings.length).toFixed(1);
+    }
+  }
+
+  ratingHue(rating) {
+    var a = 0.013;
+    var b = -0.1;
+    return a * rating * rating + b * rating;
+  }
+
+  ratingStyle() {
+    var total = this.totalRating();
+    if (total !== "unknown") {
+      return {
+        color: `hsla(${this.ratingHue(total)}, 80%, 40%, 1)`
+      };
+    } else {
+      return {};
+    }
+  }
+
   render() {
     return (
       <li className="list-group-item">
         <p className="list-group-item-text">
-          #{this.props.option.crn} <span className="text-muted">({this.props.option.course})</span>
-          <br/>
+          #{this.props.option.crn} <span className="text-muted pull-right">({this.props.option.course})</span>
+          <div className="row">
+            <div className="col-xs-4">
+              {this.uniq(this.props.option.meetings.map(this.meetingInstructor)).join(', ')}
+            </div>
+            <div className="col-xs-4" style={this.ratingStyle()}>
+              <strong>{this.totalRating()}</strong>
+            </div>
+          </div>
         </p>
-        <table className="table">
-          <thead>
-          <th>Days</th>
-          <th>Location</th>
-          <th>Time</th>
-          <th>Instructor</th>
-          <th>Rating</th>
-          <th>Type</th>
-          </thead>
-          {this.props.option.meetings.map((meeting) => {
-            return (
-              <tr>
-                <td>{meeting.days.map((day) => {
-                  return <span>{day}<br/></span>;
-                })}</td>
-                <td>{meeting.location}</td>
-                <td>{this.meetingTime(meeting.time)}</td>
-                <td>{meeting.instructor.first_name} {meeting.instructor.last_name}</td>
-                <td>{this.meetingRating(meeting.instructor)}</td>
-                <td>{meeting.type}</td>
-              </tr>
-            );
-          })}
-        </table>
-        <div className="row" ref="scheduler">
-        </div>
       </li>
     )
   }
@@ -277,6 +302,6 @@ var routes = (
   </Route>
 );
 
-Router.run(routes, Router.HashLocation, (Root) => {
+Router.run(routes, Router.HashLocation, Root => {
   React.render(<Root/>, $("#app").get(0));
 });

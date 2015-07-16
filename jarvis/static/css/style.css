@@ -12,6 +12,14 @@
     padding: 50px 30px;
 }
 
+.search-result {
+    cursor: pointer;
+}
+
+.search-result:hover {
+    background-color: #f5f5f5;
+}
+
 .spinner {
     margin: 0 auto;
     width: 50px;
