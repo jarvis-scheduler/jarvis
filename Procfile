@@ -1,1 +1,1 @@
-web: ./download_data.sh && python3 -m run
+web: ./download_data.sh && python3 -m jarvis.app
