@@ -20,5 +20,7 @@ def sanify(o):
         return {k: sanify(d[k]) for k in d}
     elif isinstance(o, set) or isinstance(o, list):
         return [sanify(v) for v in o]
+    elif isinstance(o, dict):
+        return {k: sanify(o[k]) for k in o}
     else:
         return o
