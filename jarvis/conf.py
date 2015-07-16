@@ -16,4 +16,4 @@ JSX_PATHS = [
     ('jsx/jarvis.jsx', 'build/js/jarvis.js'),
 ]
 
-DEBUG = True
+DEBUG = os.environ.get('APP_DEBUG', 'True') == 'True'
