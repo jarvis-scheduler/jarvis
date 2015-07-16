@@ -12,6 +12,8 @@ encoder = JSONEncoder()
 
 @aiohttp_jinja2.template('index.jinja2')
 def home(request):
+    if conf.DEBUG:
+        build()
     return {}
 
 @asyncio.coroutine

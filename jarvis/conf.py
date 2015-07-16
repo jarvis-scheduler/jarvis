@@ -15,3 +15,5 @@ BUILD_PATH = os.path.join(STATIC_FILES_DIR, 'build/js/')
 JSX_PATHS = [
     ('jsx/jarvis.jsx', 'build/js/jarvis.js'),
 ]
+
+DEBUG = True

@@ -39,12 +39,15 @@ class App extends React.Component {
 }
 
 class Home extends React.Component {
+
+
   render() {
+    var tagline = "Jarvis crunches the best De Anza (fall) schedule so that you don't have to.";
     return (
       <div className="jumbotron">
         <div className="container">
           <h1>Jarvis</h1>
-          <p>Jarvis crunches the best De Anza (fall) schedule so that you don't have to.</p>
+          <p>{tagline}</p>
           <p>
             <a className="btn btn-primary btn-lg" href="#/search-courses">
               Get started »
@@ -111,9 +114,20 @@ class SearchResults extends React.Component {
       contentType: 'application/json',
       dataType: 'json',
       success: function (data) {
-        this.setState({loading: false, results: data});
+        var pairs = [];
+        for (var key in data) {
+          if (data.hasOwnProperty(key)) {
+            var options = data[key];
+            pairs.push({course: {title: key, description: options[0].title}, options: options});
+          }
+        }
+        this.setState({loading: false, results: pairs});
       }.bind(this)
     });
+  }
+
+  flatten(lists) {
+    return [].concat.apply([], lists);
   }
 
   render() {
@@ -130,15 +144,15 @@ class SearchResults extends React.Component {
       if (this.state.loading) {
         output = <Spinner/>;
       } else {
-
-        var numResults = this.state.results.length;
+        var numResults = this.state.results
+          .map((result) => result.options.length)
+          .reduce((a, b) => a + b);
         output = <ul className="list-item-group">
           <li className="list-group-item text-right">{numResults} {numResults == 1 ? "result" : "results"}</li>
-          {
-          this.state.results.map(function (result) {
-            return <CourseSearchResult course={result}/>;
-          })
-        }</ul>
+          {this.state.results.map((result) =>
+            <CourseSearchResult result={result}/>
+          )}
+        </ul>;
       }
     }
     return output;
@@ -146,10 +160,34 @@ class SearchResults extends React.Component {
 
 }
 
-SearchResults.propTypes = { searchQuery: React.PropTypes.String };
-SearchResults.defaultProps = { searchQuery: ''};
-
 class CourseSearchResult extends React.Component {
+
+  render() {
+    return (
+      <li className="list-group-item">
+        <div className="row">
+          <div className="col-md-2">
+            <h4 className="list-group-item-heading">{this.props.result.course.title}</h4>
+            <p>{this.props.result.course.description}</p>
+          </div>
+          <div className="col-md-10">
+          <h4 className="list-group-item-heading">Options</h4>
+            <p classname="list-group-item-text">
+              <ul className="list-item-group">
+                {this.props.result.options.map((option) =>
+                    <CourseSearchResultOption option={option}/>
+                )}
+              </ul>
+            </p>
+          </div>
+        </div>
+      </li>
+    );
+  }
+
+}
+
+class CourseSearchResultOption extends React.Component {
 
   formatTime(time) {
     return moment({H: time.hours, m: time.minutes}).format('h:mm a');
@@ -174,20 +212,20 @@ class CourseSearchResult extends React.Component {
   render() {
     return (
       <li className="list-group-item">
-        <h4 className="list-group-item-heading">#{this.props.course.crn} <span className="text-muted">({this.props.course.course})</span></h4>
         <p className="list-group-item-text">
-          {this.props.course.title}
+          #{this.props.option.crn} <span className="text-muted">({this.props.option.course})</span>
+          <br/>
         </p>
         <table className="table">
           <thead>
-            <th>Days</th>
-            <th>Location</th>
-            <th>Time</th>
-            <th>Instructor</th>
-            <th>Rating</th>
-            <th>Type</th>
+          <th>Days</th>
+          <th>Location</th>
+          <th>Time</th>
+          <th>Instructor</th>
+          <th>Rating</th>
+          <th>Type</th>
           </thead>
-          {this.props.course.meetings.map((meeting) => {
+          {this.props.option.meetings.map((meeting) => {
             return (
               <tr>
                 <td>{meeting.days.map((day) => {
@@ -209,9 +247,6 @@ class CourseSearchResult extends React.Component {
   }
 
 }
-
-CourseSearchResult.propTypes = { course: React.PropTypes.Object };
-CourseSearchResult.defaultProps = { course: {} };
 
 class Spinner extends React.Component {
 
