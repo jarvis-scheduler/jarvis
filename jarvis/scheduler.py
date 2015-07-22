@@ -79,7 +79,7 @@ def scheduler(requirements):
         if rating_counter == 0:
             rating_result = -1
         else:
-            rating_result = schedule.rating / (rating_counter * 5 / 100)
+            rating_result = schedule.rating / (rating_counter * 5 / 100) - ((1 - rating_counter / len(schedule.schedule)) * 30)
         schedule = schedule._replace(rating=(rating_result))
 
         meetings_rect = expand_meetings(meetings)
