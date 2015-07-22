@@ -36,11 +36,8 @@ def search(search):
             matches_list = matches_raw
     matches = defaultdict(list)
     for match in matches_list:
-        if match.course[0] in {'#', '^', '*'}:
-            if match.course[0] == '^':
-                matches[match.course[2:11]].append(match)
-            else:
-                matches[match.course[:11]].append(match)
+        if match.course[0] in {'+', '#', '^', '*'}:
+            matches[match.course[2:11]].append(match)
         else:
             matches[match.course[:9]].append(match)
     return matches
