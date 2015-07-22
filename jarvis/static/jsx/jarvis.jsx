@@ -62,12 +62,26 @@ class Home extends React.Component {
 class SearchCourses extends React.Component {
 
   constructor() {
-    this.state = {searchQuery: ''};
+    this.state = {searchQuery: '', plan: []};
   }
 
   handleSearch(evt) {
     evt.preventDefault();
-    this.setState({searchQuery: $c(this.refs.search).val()});
+    this.setState({searchQuery: $c(this.refs.search).val(), plan: this.state.plan});
+  }
+
+  removeFromPlan(courseTitle) {
+    this.setState({
+      searchQuery: this.state.searchQuery,
+      plan: this.state.plan.filter(courseResult => courseResult.course.title !== courseTitle)
+    });
+  }
+
+  addToPlan(courseResult) {
+    this.setState({
+      searchQuery: this.state.searchQuery,
+      plan: this.state.plan.concat([courseResult])
+    });
   }
 
   render() {
@@ -89,14 +103,47 @@ class SearchCourses extends React.Component {
                 </span>
               </div>
             </form>
+            <CoursePlan plan={this.state.plan} removeFromPlan={this.removeFromPlan.bind(this)}/>
           </div>
           <div className="col-sm-9">
-            <SearchResults searchQuery={this.state.searchQuery}/>
+            <SearchResults searchQuery={this.state.searchQuery} addToPlan={this.addToPlan.bind(this)}/>
           </div>
         </div>
       </div>
     );
   }
+}
+
+class CoursePlan extends React.Component {
+
+  render() {
+    var planList;
+    if (this.props.plan.length > 0) {
+      planList = (
+          <ul className="list-group">
+            {this.props.plan.map(courseResult =>
+              <li className="list-group-item">
+                {courseResult.course.title} ({courseResult.options.length} options)
+                <button className="btn btn-sm pull-right"
+                        onClick={() => this.props.removeFromPlan(courseResult.course.title)}>
+                  <i className="glyphicon glyphicon-remove"></i>
+                </button>
+              </li>
+            )}
+          </ul>
+      );
+    } else {
+      planList = <p>Search for classes, then click the "add to plan" button to add them here!</p>;
+    }
+    return (
+      <div>
+        <h3>Plan</h3>
+        {planList}
+      </div>
+
+    )
+  }
+
 }
 
 class SearchResults extends React.Component {
@@ -127,6 +174,12 @@ class SearchResults extends React.Component {
     });
   }
 
+  shouldComponentUpdate(newProps, newState) {
+    console.log("old props: ", this.props, "new props: ", newProps);
+    console.log("old state: ", this.state, "new state: ", newState);
+    return newProps.searchQuery !== this.props.searchQuery || this.state.results !== newState.results;
+  }
+
   flatten(lists) {
     return [].concat.apply([], lists);
   }
@@ -152,7 +205,7 @@ class SearchResults extends React.Component {
         output = <ul className="list-item-group">
           <li className="list-group-item text-right">{numResults} {numResults == 1 ? "result" : "results"}</li>
           {this.state.results.map(result =>
-            <CourseSearchResult result={result}/>
+            <CourseSearchResult result={result} addToPlan={this.props.addToPlan}/>
           )}
         </ul>;
       }
@@ -177,7 +230,7 @@ class CourseSearchResult extends React.Component {
     var options;
     if (this.state.open) {
       options = (
-          <ul className="list-item-group">
+          <ul className="list-item-group" onClick={this.toggleOpen.bind(this)}>
             {this.props.result.options.map(option =>
                 <CourseSearchResultOption option={option}/>
             )}
@@ -187,8 +240,15 @@ class CourseSearchResult extends React.Component {
       options = null;
     }
     return (
-      <li className="list-group-item search-result" onClick={this.toggleOpen.bind(this)}>
+      <li className="list-group-item search-result">
         <h4 className="list-group-item-heading">{this.props.result.course.title}</h4>
+        <div className="btn-group pull-right">
+          <button type="button" className="btn btn-default" onClick={() => this.props.addToPlan(this.props.result)}>Add to plan</button>
+          <button type="button" className="btn btn-default" onClick={() => this.toggleOpen()}>
+            {this.state.open ? "Hide Options" : "Show Options"}
+            <i className={"glyphicon glyphicon-chevron-" + (this.state.open ? "up" : "down")}></i>
+          </button>
+        </div>
         <p>{this.props.result.course.description}</p>
         {options}
       </li>
@@ -298,6 +358,7 @@ var routes = (
   <Route handler={App}>
     <Route path="/" handler={Home}/>
     <Route path="search-courses" handler={SearchCourses}/>
+    //<Route path="scheduler" handler={Scheduler}/>
   </Route>
 );
 
