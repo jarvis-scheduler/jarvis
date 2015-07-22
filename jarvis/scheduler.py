@@ -73,8 +73,11 @@ def scheduler(requirements):
                     rating_counter += 1
                     schedule = schedule._replace(rating=schedule.rating + meeting['instructor']['rating']['score'])
                 meetings.append(meeting)
-
-        schedule = schedule._replace(rating=(schedule.rating / (rating_counter * 5 / 100)))
+        if rating_counter == 0:
+            rating_result = -1
+        else:
+            rating_result = schedule.rating / (rating_counter * 5 / 100)
+        schedule = schedule._replace(rating=(rating_result))
 
         meetings_rect = expand_meetings(meetings)
         if is_possible(meetings_rect):
@@ -83,5 +86,9 @@ def scheduler(requirements):
     print("%d solutions found" % len(possible))
 
     possible.sort(key=lambda x: x.rating, reverse=True)
+
+    for key, possibility in enumerate(possible):
+        if possibility.rating == -1:
+            possible[key] = possibility._replace(rating=("unknown"))
 
     return possible[:20]
