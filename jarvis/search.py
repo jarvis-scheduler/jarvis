@@ -1,4 +1,5 @@
 from jarvis.model import *
+from collections import defaultdict
 import pickle
 
 
@@ -33,16 +34,13 @@ def search(search):
             matches_list = [i for i in matches_list if i in matches_raw]
         else:
             matches_list = matches_raw
-    matches = {}
+    matches = defaultdict(list)
     for match in matches_list:
         if match.course[0] in {'#', '^', '*'}:
-            if not match.course[:11] in matches.keys():
-                matches[match.course[:11]] = [match]
+            if match.course[0] == '^':
+                matches[match.course[2:11]].append(match)
             else:
                 matches[match.course[:11]].append(match)
         else:
-            if not match.course[:9] in matches.keys():
-                matches[match.course[:9]] = [match]
-            else:
-                matches[match.course[:9]].append(match)
+            matches[match.course[:9]].append(match)
     return matches

@@ -54,8 +54,11 @@ def expand_meetings(meetings):
 def scheduler(requirements):
     course_text = ""
     for course in requirements:
-        course_text += course[0]['course'] + ", "
-    course_text = course_text[:-2]
+        course_raw = course[0]['course']
+        if len(course_raw) == 11:
+            course_raw = course_raw[2:]
+        course_text += course_raw + ", "
+    course_text = course_text[:-4]
     print("Finding courses for: %s" % course_text)
     print()
     all_schedules = get_schedules(requirements)
