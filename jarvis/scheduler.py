@@ -25,8 +25,8 @@ def is_possible(meetings_rect):
         end = []
         for time_range in day:
             if time_range != 'TBA':
-                start.append(time_range.start.hours*100 + time_range.start.minutes)
-                end.append(time_range.end.hours * 100 + time_range.end.minutes)
+                start.append(time_range['start']['hours']*100 + time_range['start']['minutes'])
+                end.append(time_range['end']['hours'] * 100 + time_range['end']['minutes'])
         start.sort()
         end.sort()
         counter = 0
@@ -46,7 +46,7 @@ def expand_meetings(meetings):
     meetings_rect = []
 
     for meeting in meetings:
-        for meeting_rect in itertools.product(meeting.days, [meeting.time]):
+        for meeting_rect in itertools.product(meeting['days'], [meeting['time']]):
             meetings_rect.append(meeting_rect)
     return meetings_rect
 
@@ -54,7 +54,7 @@ def expand_meetings(meetings):
 def scheduler(requirements):
     course_text = ""
     for course in requirements:
-        course_text += course[0].course + ", "
+        course_text += course[0]['course'] + ", "
     course_text = course_text[:-2]
     print("Finding courses for: %s" % course_text)
     print()
@@ -68,10 +68,10 @@ def scheduler(requirements):
         rating_counter = 0
         meetings = []
         for class_data in schedule.schedule:
-            for meeting in class_data.meetings:
-                if meeting.instructor.rating != 'unknown' and meeting.instructor.rating.score != 'unknown':
+            for meeting in class_data['meetings']:
+                if meeting['instructor']['rating'] != 'unknown' and meeting['instructor']['rating']['score'] != 'unknown':
                     rating_counter += 1
-                    schedule = schedule._replace(rating=schedule.rating + meeting.instructor.rating.score)
+                    schedule = schedule._replace(rating=schedule.rating + meeting['instructor']['rating']['score'])
                 meetings.append(meeting)
 
         schedule = schedule._replace(rating=(schedule.rating / (rating_counter * 5 / 100)))

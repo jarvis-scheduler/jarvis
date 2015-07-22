@@ -3,6 +3,8 @@ var { Route, RouteHandler } = Router;
 
 $c = (component) => $(React.findDOMNode(component));
 
+var schedulerPlan = [];
+
 class App extends React.Component {
   render() {
     return (
@@ -71,17 +73,21 @@ class SearchCourses extends React.Component {
   }
 
   removeFromPlan(courseTitle) {
+    var newPlan = this.state.plan.filter(courseResult => courseResult.course.title !== courseTitle);
     this.setState({
       searchQuery: this.state.searchQuery,
-      plan: this.state.plan.filter(courseResult => courseResult.course.title !== courseTitle)
+      plan: newPlan
     });
+    schedulerPlan = newPlan.map(courseResult => courseResult.options);
   }
 
   addToPlan(courseResult) {
+    var newPlan = this.state.plan.concat([courseResult]);
     this.setState({
       searchQuery: this.state.searchQuery,
-      plan: this.state.plan.concat([courseResult])
+      plan: newPlan
     });
+    schedulerPlan = newPlan.map(courseResult => courseResult.options);
   }
 
   render() {
@@ -117,28 +123,31 @@ class SearchCourses extends React.Component {
 class CoursePlan extends React.Component {
 
   render() {
-    var planList;
+    var content;
     if (this.props.plan.length > 0) {
-      planList = (
-          <ul className="list-group">
-            {this.props.plan.map(courseResult =>
-              <li className="list-group-item">
-                {courseResult.course.title} ({courseResult.options.length} options)
-                <button className="btn btn-sm pull-right"
-                        onClick={() => this.props.removeFromPlan(courseResult.course.title)}>
-                  <i className="glyphicon glyphicon-remove"></i>
-                </button>
-              </li>
-            )}
-          </ul>
+      content = (
+          <div>
+            <ul className="list-group">
+              {this.props.plan.map(courseResult =>
+                <li className="list-group-item">
+                  {courseResult.course.title} ({courseResult.options.length} options)
+                  <button className="btn btn-sm pull-right"
+                          onClick={() => this.props.removeFromPlan(courseResult.course.title)}>
+                    <i className="glyphicon glyphicon-remove"></i>
+                  </button>
+                </li>
+              )}
+            </ul>
+            <a href="#/scheduler" className="btn btn-primary">Create Schedules!</a>
+          </div>
       );
     } else {
-      planList = <p>Search for classes, then click the "add to plan" button to add them here!</p>;
+      content = <p>Search for classes, then click the "add to plan" button to add them here!</p>;
     }
     return (
       <div>
         <h3>Plan</h3>
-        {planList}
+        {content}
       </div>
 
     )
@@ -175,8 +184,6 @@ class SearchResults extends React.Component {
   }
 
   shouldComponentUpdate(newProps, newState) {
-    console.log("old props: ", this.props, "new props: ", newProps);
-    console.log("old state: ", this.state, "new state: ", newState);
     return newProps.searchQuery !== this.props.searchQuery || this.state.results !== newState.results;
   }
 
@@ -348,6 +355,72 @@ class Spinner extends React.Component {
 
 }
 
+class Scheduler extends React.Component {
+
+  constructor() {
+    if (schedulerPlan.length > 0) {
+      this.state = {loading: true, results: []};
+      $.ajax({
+        type: 'POST',
+        url: '/schedule',
+        data: JSON.stringify(schedulerPlan),
+        contentType: 'application/json',
+        dataType: 'json',
+        success: function (data) {
+          console.log(data);
+          this.setState({loading: false, results: data});
+        }.bind(this)
+      });
+    } else {
+      this.state = {loading: false, results: []};
+    }
+  }
+
+  //componentWillReceiveProps(newProps) {
+  //  this.setState({loading: true});
+  //
+  //}
+
+  render() {
+    var output;
+    if (this.state.loading) {
+      output = <Spinner/>;
+    } else {
+      if (this.state.results.length > 0) {
+        var numResults = this.state.results.length;
+        output = <ul className="list-item-group">
+          <li className="list-group-item text-right">{numResults} {numResults == 1 ? "result" : "results"}</li>
+          {this.state.results.map(result =>
+            <li className="list-group-item">
+              {result.rating}
+              <ul className="list-item-group">
+                {result.schedule.map(course =>
+                  <CourseSearchResultOption option={course}/>
+                )}
+              </ul>
+            </li>
+          )}
+        </ul>;
+      } else {
+        output = <ul className="list-item-group">
+          <li className="list-group-item text-right">0 results</li>
+          <li className="list-group-item text-right">No schedules found :( :( :( try another plan?</li>
+        </ul>;
+      }
+    }
+    return (
+        <div className="container">
+          <div className="row">
+            <div className="col-sm-12">
+              <h1>Scheduler Output</h1>
+              {output}
+            </div>
+          </div>
+        </div>
+    );
+  }
+}
+
 class CourseScheduleVisualization extends React.Component {
 
 
@@ -358,7 +431,7 @@ var routes = (
   <Route handler={App}>
     <Route path="/" handler={Home}/>
     <Route path="search-courses" handler={SearchCourses}/>
-    //<Route path="scheduler" handler={Scheduler}/>
+    <Route path="scheduler" handler={Scheduler}/>
   </Route>
 );
 

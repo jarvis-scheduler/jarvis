@@ -2,6 +2,7 @@ import asyncio
 from json import JSONEncoder
 from aiohttp import web, Response
 import aiohttp_jinja2 as aiohttp_jinja2
+from jarvis.scheduler import scheduler
 import jinja2
 from jarvis import conf
 from jarvis.builder import build
@@ -23,6 +24,12 @@ def api_search(request):
     results = sanify(search(query))
     return JsonResponse(body=encoder.encode(results))
 
+@asyncio.coroutine
+def api_schedule(request):
+    json = yield from request.json()
+    results = sanify(scheduler(json))
+    return JsonResponse(body=encoder.encode(results))
+
 app = web.Application()
 
 aiohttp_jinja2.setup(app,
@@ -31,6 +38,7 @@ staticRoute = app.router.add_static(conf.STATIC_URL, conf.STATIC_FILES_DIR)
 
 app.router.add_route('GET', '/', home)
 app.router.add_route('POST', '/search', api_search)
+app.router.add_route('POST', '/schedule', api_schedule)
 
 def start():
     loop = asyncio.get_event_loop()

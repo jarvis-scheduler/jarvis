@@ -15,10 +15,10 @@ class JsonResponse(Response):
 
 # converts a highly nested set of named tuples into a JSON-viewable dict/list set
 def sanify(o):
-    if isinstance(o, tuple):
+    if isinstance(o, tuple) and hasattr(o, '_asdict'):
         d = o._asdict()
         return {k: sanify(d[k]) for k in d}
-    elif isinstance(o, set) or isinstance(o, list):
+    elif isinstance(o, set) or isinstance(o, list) or isinstance(o, tuple):
         return [sanify(v) for v in o]
     elif isinstance(o, dict):
         return {k: sanify(o[k]) for k in o}
