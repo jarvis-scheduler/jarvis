@@ -131,7 +131,7 @@ class CoursePlan extends React.Component {
               {this.props.plan.map(courseResult =>
                 <li className="list-group-item">
                   {courseResult.course.title} ({courseResult.options.length} options)
-                  <button className="btn btn-sm pull-right"
+                  <button className="btn btn-xs pull-right"
                           onClick={() => this.props.removeFromPlan(courseResult.course.title)}>
                     <i className="glyphicon glyphicon-remove"></i>
                   </button>
