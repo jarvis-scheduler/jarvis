@@ -37,7 +37,13 @@ def search(search):
     matches = defaultdict(list)
     for match in matches_list:
         if match.course[0] in {'+', '#', '^', '*'}:
-            matches[match.course[2:11]].append(match)
+            if match.course[10] == '.':
+                matches[match.course[2:10]].append(match)
+            else:
+                matches[match.course[2:11]].append(match)
         else:
-            matches[match.course[:9]].append(match)
+            if match.course[8] == '.':
+                matches[match.course[:8]].append(match)
+            else:
+                matches[match.course[:9]].append(match)
     return matches
