@@ -1,15 +1,19 @@
 import asyncio
+from concurrent.futures import ProcessPoolExecutor
 from json import JSONEncoder
 from aiohttp import web, Response
 import aiohttp_jinja2 as aiohttp_jinja2
 from jarvis.scheduler import scheduler
+from functools import partial
 import jinja2
 from jarvis import conf
 from jarvis.builder import build
 from jarvis.search import search
 from jarvis.util import JsonResponse, sanify
 
+loop = None
 encoder = JSONEncoder()
+executor = ProcessPoolExecutor(max_workers=4)
 
 @aiohttp_jinja2.template('index.jinja2')
 def home(request):
@@ -19,15 +23,19 @@ def home(request):
 
 @asyncio.coroutine
 def api_search(request):
+    global loop
     json = yield from request.json()
     query = json['query']
-    results = sanify(search(query))
+    search_result = yield from loop.run_in_executor(executor, partial(search, query))
+    results = sanify(search_result)
     return JsonResponse(body=encoder.encode(results))
 
 @asyncio.coroutine
 def api_schedule(request):
+    global loop
     json = yield from request.json()
-    results = sanify(scheduler(json))
+    scheduler_result = yield from loop.run_in_executor(executor, partial(scheduler, json))
+    results = sanify(scheduler_result)
     return JsonResponse(body=encoder.encode(results))
 
 app = web.Application()
@@ -41,6 +49,7 @@ app.router.add_route('POST', '/search', api_search)
 app.router.add_route('POST', '/schedule', api_schedule)
 
 def start():
+    global loop
     loop = asyncio.get_event_loop()
     handler = app.make_handler()
     f = loop.create_server(handler, '0.0.0.0', conf.PORT)
