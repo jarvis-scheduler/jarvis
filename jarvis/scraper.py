@@ -62,9 +62,25 @@ def row_describes_course(row):
 
 def get_meeting_days(days_text):
     days = set()
-    for day_key, day in DAYS_MAPPING:
-        if day_key in days_text:
-            days.add(day)
+    if days_text != 'TBA':
+        days_text_split = []
+        # don't kill me for this please
+        i = 0
+        days_text_len = len(days_text)
+        while i < days_text_len:
+            if days_text[i] in ['M', 'W', 'F', 'S']:
+                days_text_split.append(days_text[i])
+                i += 1
+            else:
+                if (i + 1) < days_text_len and days_text[i + 1] == 'h':
+                    days_text_split.append('Th')
+                    i += 2
+                else:
+                    days_text_split.append('T')
+                    i += 1
+        for day_key, day in DAYS_MAPPING:
+            if day_key in days_text_split:
+                days.add(day)
     return days
 
 
