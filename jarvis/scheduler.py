@@ -69,17 +69,19 @@ def scheduler(requirements):
     for schedule in all_schedules:
         schedule = Result(0, schedule)
         rating_counter = 0
+        counter = 0
         meetings = []
         for class_data in schedule.schedule:
             for meeting in class_data['meetings']:
                 if meeting['instructor']['rating'] != 'unknown' and meeting['instructor']['rating']['score'] != 'unknown':
                     rating_counter += 1
                     schedule = schedule._replace(rating=schedule.rating + meeting['instructor']['rating']['score'])
+                counter += 1
                 meetings.append(meeting)
         if rating_counter == 0:
             rating_result = -1
         else:
-            rating_result = schedule.rating / (rating_counter * 5 / 100) - ((1 - rating_counter / len(schedule.schedule)) * 30)
+            rating_result = schedule.rating / (rating_counter * 5 / 100) - ((1 - rating_counter / counter)* 30)
         schedule = schedule._replace(rating=(rating_result))
 
         meetings_rect = expand_meetings(meetings)
