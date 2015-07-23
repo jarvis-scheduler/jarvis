@@ -25,8 +25,8 @@ def is_possible(meetings_rect):
         end = []
         for time_range in day:
             if time_range != 'TBA':
-                start.append(time_range['start']['hours']*100 + time_range['start']['minutes'])
-                end.append(time_range['end']['hours'] * 100 + time_range['end']['minutes'])
+                start.append(time_range['start']['hours'] * 60 + time_range['start']['minutes'])
+                end.append(time_range['end']['hours'] * 60 + time_range['end']['minutes'])
         start.sort()
         end.sort()
         counter = 0
