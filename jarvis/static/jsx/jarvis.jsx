@@ -323,13 +323,19 @@ class CourseSearchResultOption extends React.Component {
     return (
       <li className="list-group-item">
         <p className="list-group-item-text">
-          #{this.props.option.crn} <span className="text-muted pull-right">({this.props.option.course})</span>
+
           <div className="row">
-            <div className="col-xs-4">
+            <div className="col-xs-3">
+              #{this.props.option.crn}
+            </div>
+            <div className="col-xs-3" style={this.ratingStyle()}>
+              <strong>{this.totalRating()}</strong>
+            </div>
+            <div className="col-xs-3">
               {this.uniq(this.props.option.meetings.map(this.meetingInstructor)).join(', ')}
             </div>
-            <div className="col-xs-4" style={this.ratingStyle()}>
-              <strong>{this.totalRating()}</strong>
+            <div className="col-xs-3">
+              <span className="text-muted">({this.props.option.course})</span>
             </div>
           </div>
         </p>
@@ -367,7 +373,6 @@ class Scheduler extends React.Component {
         contentType: 'application/json',
         dataType: 'json',
         success: function (data) {
-          console.log(data);
           this.setState({loading: false, results: data});
         }.bind(this)
       });
@@ -391,14 +396,7 @@ class Scheduler extends React.Component {
         output = <ul className="list-item-group">
           <li className="list-group-item text-right">{numResults} {numResults == 1 ? "result" : "results"}</li>
           {this.state.results.map(result =>
-            <li className="list-group-item">
-              {result.rating}
-              <ul className="list-item-group">
-                {result.schedule.map(course =>
-                  <CourseSearchResultOption option={course}/>
-                )}
-              </ul>
-            </li>
+            <ScheduleResult result={result} />
           )}
         </ul>;
       } else {
@@ -421,9 +419,134 @@ class Scheduler extends React.Component {
   }
 }
 
-class CourseScheduleVisualization extends React.Component {
+class ScheduleResult extends React.Component {
 
+  ratingHue(rating) {
+    var a = 0.012;
+    return a * rating * rating;
+  }
 
+  ratingStyle() {
+    var total = this.props.result.rating;
+    if (total !== "unknown") {
+      return {
+        color: `hsla(${this.ratingHue(total)}, 80%, 40%, 1)`
+      };
+    } else {
+      return {};
+    }
+  }
+
+  render() {
+    var result = this.props.result;
+    return (
+        <li className="list-group-item">
+          <div className="row">
+            <div className="col-sm-1">
+              <h3 style={this.ratingStyle()}>
+                {result.rating === "unknown" ? "??" : result.rating.toFixed(1)}
+              </h3>
+            </div>
+            <div className="col-sm-11">
+              <ul className="list-item-group">
+                {result.schedule.map(course =>
+                  <CourseSearchResultOption option={course}/>
+                )}
+                <li className="list-group-item viz">
+                  <ScheduleVisualization result={result} />
+                </li>
+              </ul>
+            </div>
+          </div>
+        </li>
+    );
+  }
+
+}
+
+class ScheduleVisualization extends React.Component {
+
+  days() {
+    return ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  }
+
+  hours() {
+    var hours = [];
+    for (var i = 1; i < 24; i++) {
+      hours.push(i);
+    }
+    return hours;
+  }
+
+  getTime(time) {
+    return 60 * time.hours + time.minutes;
+  }
+
+  getTimeRange(range) {
+    return {start: this.getTime(range.start), end: this.getTime(range.end)};
+  }
+
+  displayHr(hour) {
+    if (hour < 12) {
+      return hour + ' am';
+    } else if (hour == 12) {
+      return '12 pm';
+    } else {
+      return (hour - 12) + ' pm';
+    }
+  }
+
+  meetingDays() {
+    var schedule = this.props.result.schedule;
+    var byDay = {};
+    this.days().forEach(day => byDay[day] = []);
+
+    schedule.forEach(course => {
+      course.meetings.forEach(meeting => {
+        if (meeting.time !== "TBA") {
+          var meetingInfo = {course: course.course, time: this.getTimeRange(meeting.time)};
+          meeting.days.forEach(day => {
+            byDay[day].push(meetingInfo);
+          });
+        }
+      });
+    });
+
+    return this.days().map(day =>
+      ({
+        day: day,
+        events: byDay[day].sort((m1, m2) => m1.time.start - m2.time.start)
+      })
+    );
+  }
+
+  flatten(lists) {
+    return [].concat.apply([], lists);
+  }
+
+  render() {
+    var meetings = this.meetingDays();
+    var minTime = Math.min.apply(null, this.flatten(meetings.map(meeting => meeting.events.map(event => event.time.start))));
+    var maxTime = Math.max.apply(null, this.flatten(meetings.map(meeting => meeting.events.map(event => event.time.end))));
+    var minHourSize = (minTime / 60 - 1) * 60 / 2 - 20; // WHO SAID THEY DIDN'T LIKE MAGIC NUMBERS????
+    return (
+        <div className="row">
+          {this.hours().filter(hour => hour >= (minTime / 60 - 1) && hour <= (maxTime / 60)).map(hour =>
+            <div className="hour-line text-muted" style={{top: hour * 60 / 2 + 10 - minHourSize}}>{this.displayHr(hour)}</div>
+          )}
+          {meetings.map(meeting =>
+            <div className="col-xs-2 viz-day text-center text-bold" style={{height: maxTime / 2 + 10 - minHourSize}}>
+              {meeting.day}
+              {meeting.events.map(event =>
+                <div className="viz-event" style={{top: event.time.start / 2 - minHourSize, height: (event.time.end - event.time.start) / 2}}>
+                  {event.course}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+    )
+  }
 
 }
 
