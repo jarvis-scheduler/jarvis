@@ -69,7 +69,7 @@ class SearchCourses extends React.Component {
 
   handleSearch(evt) {
     evt.preventDefault();
-    this.setState({searchQuery: $c(this.refs.search).val(), plan: this.state.plan, classTypes: $c(this.refs.classTypeSelect)});
+    this.setState({searchQuery: $c(this.refs.search).val(), plan: this.state.plan, classTypes: $c(this.refs.classTypeSelect).val()});
   }
 
   removeFromPlan(courseTitle) {
