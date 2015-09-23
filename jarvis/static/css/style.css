@@ -20,6 +20,10 @@
     background-color: #f5f5f5;
 }
 
+.bottom20 {
+    margin-bottom:20px;
+}
+
 .spinner {
     margin: 0 auto;
     width: 50px;

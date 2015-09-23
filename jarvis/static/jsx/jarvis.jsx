@@ -90,6 +90,10 @@ class SearchCourses extends React.Component {
     schedulerPlan = newPlan.map(courseResult => courseResult.options);
   }
 
+  componentDidMount() {
+    $('#class-type-select').multiselect();
+  }
+
   render() {
     return (
       <div className="container">
@@ -102,11 +106,19 @@ class SearchCourses extends React.Component {
         <div className="row">
           <div className="col-sm-3">
             <form role="form" onSubmit={this.handleSearch.bind(this)} ref="search-form">
-              <div className="input-group">
+              <div className="row input-group bottom20 ">
                 <input className="form-control" type="text" placeholder="Search..." ref="search"/>
                 <span className="input-group-btn">
                     <button type="submit" className="btn btn-primary"><i className="glyphicon glyphicon-search"></i></button>
                 </span>
+              </div>
+              <div className="row">
+                <select id="class-type-select" multiple="multiple">
+                    <option value="hybrid">Hybrid</option>
+                    <option value="communities">Learning in Communities</option>
+                    <option value="community-service">Community Service Learning</option>
+                    <option value="offcampus">Off-Campus</option>
+                </select>
               </div>
             </form>
             <CoursePlan plan={this.state.plan} removeFromPlan={this.removeFromPlan.bind(this)}/>
