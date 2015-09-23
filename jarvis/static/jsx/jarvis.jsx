@@ -69,7 +69,7 @@ class SearchCourses extends React.Component {
 
   handleSearch(evt) {
     evt.preventDefault();
-    this.setState({searchQuery: $c(this.refs.search).val(), plan: this.state.plan});
+    this.setState({searchQuery: $c(this.refs.search).val(), plan: this.state.plan, classTypes: $c(this.refs.classTypeSelect)});
   }
 
   removeFromPlan(courseTitle) {
@@ -113,7 +113,7 @@ class SearchCourses extends React.Component {
                 </span>
               </div>
               <div className="row">
-                <select id="class-type-select" multiple="multiple">
+                <select id="class-type-select" multiple="multiple" ref="classTypeSelect">
                     <option value="hybrid">Hybrid</option>
                     <option value="communities">Learning in Communities</option>
                     <option value="community-service">Community Service Learning</option>
@@ -124,7 +124,7 @@ class SearchCourses extends React.Component {
             <CoursePlan plan={this.state.plan} removeFromPlan={this.removeFromPlan.bind(this)}/>
           </div>
           <div className="col-sm-9">
-            <SearchResults searchQuery={this.state.searchQuery} addToPlan={this.addToPlan.bind(this)}/>
+            <SearchResults searchQuery={this.state.searchQuery} classTypes={this.state.classTypes} addToPlan={this.addToPlan.bind(this)}/>
           </div>
         </div>
       </div>
@@ -179,7 +179,7 @@ class SearchResults extends React.Component {
     $.ajax({
       type: 'POST',
       url: '/search',
-      data: JSON.stringify({query: newProps.searchQuery}),
+      data: JSON.stringify({query: newProps.searchQuery, classTypes: newProps.classTypes}),
       contentType: 'application/json',
       dataType: 'json',
       success: function (data) {
@@ -196,7 +196,8 @@ class SearchResults extends React.Component {
   }
 
   shouldComponentUpdate(newProps, newState) {
-    return newProps.searchQuery !== this.props.searchQuery || this.state.results !== newState.results;
+    return newProps.searchQuery !== this.props.searchQuery || this.state.results !== newState.results
+        || newProps.classTypes !== this.props.classTypes;
   }
 
   flatten(lists) {

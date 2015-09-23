@@ -26,7 +26,8 @@ def api_search(request):
     global loop
     json = yield from request.json()
     query = json['query']
-    search_result = yield from loop.run_in_executor(executor, partial(search, query))
+    class_types = json['class_types']
+    search_result = yield from loop.run_in_executor(executor, partial(search, query, class_types))
     results = sanify(search_result)
     return JsonResponse(body=encoder.encode(results))
 

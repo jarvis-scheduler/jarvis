@@ -21,7 +21,7 @@ def preprocess_index():
         pickle.dump(index, index_file)
 
 
-def search(search):
+def search(search, class_types):
     search = search.lower()
 
     with open('data/index.pickle', 'rb') as index_file:
