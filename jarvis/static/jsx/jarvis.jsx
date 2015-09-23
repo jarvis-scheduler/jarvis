@@ -179,7 +179,7 @@ class SearchResults extends React.Component {
     $.ajax({
       type: 'POST',
       url: '/search',
-      data: JSON.stringify({query: newProps.searchQuery, classTypes: newProps.classTypes}),
+      data: JSON.stringify({query: newProps.searchQuery, class_types: newProps.classTypes}),
       contentType: 'application/json',
       dataType: 'json',
       success: function (data) {
