@@ -91,7 +91,9 @@ class SearchCourses extends React.Component {
   }
 
   componentDidMount() {
-    $('#class-type-select').multiselect();
+    $('#class-type-select').multiselect({
+        buttonWidth: '100%'
+    });
   }
 
   render() {
@@ -114,10 +116,10 @@ class SearchCourses extends React.Component {
               </div>
               <div className="row">
                 <select id="class-type-select" multiple="multiple" ref="classTypeSelect">
-                    <option value="hybrid">Hybrid</option>
-                    <option value="communities">Learning in Communities</option>
-                    <option value="community-service">Community Service Learning</option>
-                    <option value="offcampus">Off-Campus</option>
+                    <option selected="selected" value="hybrid">Hybrid (*)</option>
+                    <option selected="selected" value="communities">Learning in Communities (+)</option>
+                    <option selected="selected" value="community-service">Community Service Learning (^)</option>
+                    <option selected="selected" value="offcampus">Off-Campus (#)</option>
                 </select>
               </div>
             </form>

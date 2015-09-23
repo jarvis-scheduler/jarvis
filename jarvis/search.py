@@ -20,9 +20,15 @@ def preprocess_index():
     with open('data/index.pickle', 'wb') as index_file:
         pickle.dump(index, index_file)
 
-
 def search(search, class_types):
     search = search.lower()
+
+    index_map = {"hybrid": '*',
+                 "communities": '+',
+                 "community-service": '^',
+                 "offcampus": '#'}
+
+    index_set = {index_map[class_type] for class_type in set(class_types)}
 
     with open('data/index.pickle', 'rb') as index_file:
         index = pickle.load(index_file)
@@ -38,7 +44,7 @@ def search(search, class_types):
     matches = defaultdict(list)
     regex = re.compile(r"-0*")
     for match in matches_list:
-        if match.course[0] in {'+', '#', '^', '*'}:
+        if match.course[0] in index_set:
             if match.course[10] == '.':
                 match_key = match.course[2:10]
                 match_key = regex.sub(" ", match_key)
@@ -47,7 +53,7 @@ def search(search, class_types):
                 match_key = match.course[2:11]
                 match_key = regex.sub(" ", match_key)
                 matches[match_key].append(match)
-        else:
+        elif match.course[0] not in set(index_map.values()) ^ index_set:
             if match.course[8] == '.':
                 match_key = match.course[:8]
                 match_key = regex.sub(" ", match_key)
