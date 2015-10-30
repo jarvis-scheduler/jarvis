@@ -2,10 +2,13 @@ from multiprocessing import Pool
 import os
 import os.path
 import pickle
+import re
 
 from pyquery import PyQuery as pq
 import requests
 from jarvis.model import *
+
+p = re.compile('\s.\.')
 
 COURSES_SCHEDULE = 'https://www.deanza.edu/schedule/classes/index.html'
 COURSES_SEARCH = 'https://www.deanza.edu/schedule/classes/schsearch.html'
@@ -83,12 +86,16 @@ def get_meeting_days(days_text):
                 days.add(day)
     return days
 
-
 def get_meeting_instructor(instructor_text):
     comma_index = instructor_text.find(',')
 
     last_name = instructor_text[:comma_index].capitalize()
     first_name = instructor_text[comma_index + 1:].strip().capitalize()
+
+    middle_match = p.search(first_name)
+    if not middle_match == None:
+        print(middle_match.group())
+        first_name = first_name[:middle_match.start()]
 
     return Instructor(first_name=first_name, last_name=last_name, rating='unknown')
 
