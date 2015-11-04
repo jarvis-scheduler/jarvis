@@ -4,6 +4,7 @@ var { Route, RouteHandler } = Router;
 $c = (component) => $(React.findDOMNode(component));
 
 var schedulerPlan = [];
+var inMiddleCollege = false;
 
 class App extends React.Component {
   render() {
@@ -64,7 +65,7 @@ class Home extends React.Component {
 class SearchCourses extends React.Component {
 
   constructor() {
-    this.state = {searchQuery: '', plan: []};
+    this.state = {searchQuery: '', plan: [], inMiddleCollege: false};
   }
 
   handleSearch(evt) {
@@ -90,6 +91,10 @@ class SearchCourses extends React.Component {
     schedulerPlan = newPlan.map(courseResult => courseResult.options);
   }
 
+  setMiddleCollege() {
+    inMiddleCollege = $c(this.refs.inMiddleCollege)[0].checked;
+  }
+
   componentDidMount() {
     $('#class-type-select').multiselect({
         buttonWidth: '100%'
@@ -108,7 +113,7 @@ class SearchCourses extends React.Component {
         <div className="row">
           <div className="col-sm-3">
             <form role="form" onSubmit={this.handleSearch.bind(this)} ref="search-form">
-              <div className="row input-group bottom20 ">
+              <div className="row input-group bottom20">
                 <input className="form-control" type="text" placeholder="Search..." ref="search"/>
                 <span className="input-group-btn">
                     <button type="submit" className="btn btn-primary"><i className="glyphicon glyphicon-search"></i></button>
@@ -122,11 +127,18 @@ class SearchCourses extends React.Component {
                     <option selected="selected" value="offcampus">Off-Campus (#)</option>
                 </select>
               </div>
+              <div className="checkbox">
+                <label>
+                  <input type="checkbox" ref="inMiddleCollege" onClick={this.setMiddleCollege.bind(this)}/>
+                  Include Middle College in Schedule
+                </label>
+              </div>
             </form>
             <CoursePlan plan={this.state.plan} removeFromPlan={this.removeFromPlan.bind(this)}/>
           </div>
           <div className="col-sm-9">
-            <SearchResults searchQuery={this.state.searchQuery} classTypes={this.state.classTypes} addToPlan={this.addToPlan.bind(this)}/>
+            <SearchResults searchQuery={this.state.searchQuery} classTypes={this.state.classTypes} addToPlan={this.addToPlan.bind(this)}
+                inMiddleCollege={this.state.inMiddleCollege}/>
           </div>
         </div>
       </div>
@@ -379,12 +391,46 @@ class Spinner extends React.Component {
 class Scheduler extends React.Component {
 
   constructor() {
-    if (schedulerPlan.length > 0) {
+    var middleCollegeCourse = {
+      course: "MIDDLE-COLLEGE",
+      title: "Middle College",
+      crn: "3RR31P",
+      meetings: [
+        {
+          days: [
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday"
+          ],
+          instructor: {
+            first_name: "M",
+            last_name: "Staff",
+            rating: "unknown"
+          },
+          location: "G Building",
+          time: {
+            start: {
+              hours: 12,
+              minutes: 30
+            },
+            end: {
+              hours: 15,
+              minutes: 20
+            }
+          },
+          type: "Class"
+        }
+      ]
+    };
+    var fullSchedulerPlan = inMiddleCollege ? [[middleCollegeCourse]].concat(schedulerPlan) : schedulerPlan;
+    if (fullSchedulerPlan.length > 0) {
       this.state = {loading: true, results: []};
       $.ajax({
         type: 'POST',
         url: '/schedule',
-        data: JSON.stringify(schedulerPlan),
+        data: JSON.stringify(fullSchedulerPlan),
         contentType: 'application/json',
         dataType: 'json',
         success: function (data) {
