@@ -314,7 +314,16 @@ class CourseSearchResultOption extends React.Component {
   }
 
   meetingInstructor(meeting) {
-    return `${meeting.instructor.first_name} ${meeting.instructor.last_name}`;
+    var rating_url = '';
+    if (meeting.instructor.rating !== "unknown") {
+      rating_url = "http://www.ratemyprofessors.com/ShowRatings.jsp?tid=" + meeting.instructor.rating.rating_id;
+    }
+    var instructor_name = `${meeting.instructor.first_name} ${meeting.instructor.last_name}`;
+    if (rating_url === "") {
+      return instructor_name;
+    } {
+      return <a href={rating_url}>{instructor_name}</a>;
+    }
   }
 
   uniq(arr) {
@@ -359,7 +368,7 @@ class CourseSearchResultOption extends React.Component {
               <strong>{this.totalRating()}</strong>
             </div>
             <div className="col-xs-3">
-              {this.uniq(this.props.option.meetings.map(this.meetingInstructor)).join(', ')}
+              {this.uniq(this.props.option.meetings.map(this.meetingInstructor))}
             </div>
             <div className="col-xs-3">
               <span className="text-muted">({this.props.option.course})</span>
