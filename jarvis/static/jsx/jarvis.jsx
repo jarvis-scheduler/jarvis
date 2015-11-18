@@ -335,7 +335,7 @@ class CourseSearchResultOption extends React.Component {
     if (ratings.length === 0) {
       return "unknown";
     } else {
-      return (20 * ratings.reduce((a, b) => a + b) / ratings.length).toFixed(1);
+      return (20 * ratings.reduce((a, b) => a + b) / ratings.length).toFixed();
     }
   }
 
@@ -514,7 +514,7 @@ class ScheduleResult extends React.Component {
           <div className="row">
             <div className="col-sm-1">
               <h3 style={this.ratingStyle()}>
-                {result.rating === "unknown" ? "??" : result.rating.toFixed(1)}
+                {result.rating === "unknown" ? "??" : result.rating.toFixed()}
               </h3>
             </div>
             <div className="col-sm-11">
