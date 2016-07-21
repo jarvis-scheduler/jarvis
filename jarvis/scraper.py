@@ -44,7 +44,7 @@ TYPES_MAPPING = {
 
 YEAR = str(2016)
 
-quarter = YEAR + QUARTER_MAPPING['spring']
+quarter = YEAR + QUARTER_MAPPING['fall']
 
 
 def get_departments():
