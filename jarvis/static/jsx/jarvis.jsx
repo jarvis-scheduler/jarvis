@@ -45,7 +45,7 @@ class Home extends React.Component {
 
 
   render() {
-    var tagline = "Jarvis crunches the best De Anza (spring) schedule so that you don't have to.";
+    var tagline = "Jarvis crunches the best De Anza (fall) schedule so that you don't have to.";
     return (
       <div className="jumbotron">
         <div className="container">
