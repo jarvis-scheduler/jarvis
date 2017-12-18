@@ -42,9 +42,9 @@ TYPES_MAPPING = {
     'LEC': 'Lecture',
 }
 
-YEAR = str(2016)
+YEAR = str(2018)
 
-quarter = YEAR + QUARTER_MAPPING['fall']
+quarter = YEAR + QUARTER_MAPPING['winter']
 
 
 def get_departments():
